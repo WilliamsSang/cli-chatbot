@@ -1,8 +1,9 @@
+import json
+import os
 from dotenv import load_dotenv
 from openai import OpenAI
 
 load_dotenv()
-
 
 class ChatBot:
     def __init__(self):
@@ -13,6 +14,7 @@ class ChatBot:
                 "content": "你叫小含，是我的 Python 学习助手。请你用温柔耐心的风格跟我说话。请你每次回答我的问题时，不要直接告诉我答案，而是引导我自己理解问题。"
             }
         ]
+        self.load_history()
 
     def add_message(self, role, content):
         self.history.append({
@@ -20,6 +22,15 @@ class ChatBot:
             "content": content
         })
 
+    def save_history(self):
+        with open("history.json", "w", encoding="utf-8") as file:
+            json.dump(self.history, file, ensure_ascii=False, indent=2)
+    
+    def load_history(self):
+        if os.path.exists("history.json"):
+            with open("history.json", "r", encoding="utf-8") as file:
+                self.history = json.load(file)
+    
     def ask_llm(self):
         response = self.client.responses.create(
             model="gpt-4.1-mini",
@@ -51,6 +62,8 @@ class ChatBot:
 
             self.trim_history()
 
+            self.save_history()
 
-bot = ChatBot()
-bot.chat()
+if __name__ == "__main__":
+    bot = ChatBot()
+    bot.chat()
