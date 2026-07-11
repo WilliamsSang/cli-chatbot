@@ -8,14 +8,22 @@ load_dotenv()
 class ChatBot:
     def __init__(self):
         self.client = OpenAI()
-        self.history = [
-            {
-                "role": "system",
-                "content": "你叫小含，是我的 Python 学习助手。请你用温柔耐心的风格跟我说话。请你每次回答我的问题时，不要直接告诉我答案，而是引导我自己理解问题。"
-            }
-        ]
-        self.load_history()
 
+        system_prompt = self.load_system_prompt()
+
+        self.history = [
+        {
+            "role": "system",
+            "content": system_prompt
+        }
+    ]
+
+        self.load_history()
+    
+    def load_system_prompt(self) -> str:
+        with open("system_prompt.txt", "r", encoding="utf-8") as file:
+            return file.read().strip()
+    
     def add_message(self, role, content):
         self.history.append({
             "role": role,
@@ -29,7 +37,9 @@ class ChatBot:
     def load_history(self):
         if os.path.exists("history.json"):
             with open("history.json", "r", encoding="utf-8") as file:
-                self.history = json.load(file)
+                saved_history = json.load(file)
+
+            self.history.extend(saved_history[1:])
     
     def ask_llm(self):
         response = self.client.responses.create(
