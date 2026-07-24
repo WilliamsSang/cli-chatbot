@@ -2,7 +2,7 @@ import json
 import os
 from dotenv import load_dotenv
 from openai import OpenAI
-from tools.time_tools import get_current_time
+from tools import get_current_time, calculate
 
 load_dotenv()
 
@@ -19,13 +19,32 @@ class ChatBot:
         }
     ]
 
-        self.tools = [
+        self.tools = [ 
     {
-        "type": "function",
-        "name": "get_current_time",
-        "description": "Retrieve the current local date and time.",
-    }
-]
+    "type": "function",
+    "name": "get_current_time",
+    "description": "Retrieve the current local date and time.",
+    },
+    {
+    "type": "function",
+    "name": "calculate",
+    "description": "Calculate a mathematical expression.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "expression": {
+                "type": "string",
+                "description": "The math expression to calculate."
+            }
+        },
+        "required": ["expression"],
+        "additionalProperties": False
+    }}  ]
+        
+        self.tool_map = {
+    "get_current_time": get_current_time,
+    "calculate": calculate,
+}
         self.load_history()
     
     def load_system_prompt(self) -> str:
@@ -58,14 +77,20 @@ class ChatBot:
 
         for item in response.output:
             if item.type == "function_call":
-                if item.name == "get_current_time":
-                    tool_result = get_current_time()
+                tool_function = self.tool_map.get(item.name)
 
-                    second_input = self.history.copy()
+                if tool_function is None:
+                    raise ValueError(f"Unknown tool: {item.name}")
+                
+                arguments = json.loads(item.arguments)
 
-                    second_input.extend(response.output)
+                tool_result = tool_function(**arguments)
 
-                    second_input.append(
+                second_input = self.history.copy()
+
+                second_input.extend(response.output)
+
+                second_input.append(
                         {
                             "type": "function_call_output",
                             "call_id": item.call_id,
@@ -76,13 +101,13 @@ class ChatBot:
                         }
                     )
 
-                    final_response = self.client.responses.create(
+                final_response = self.client.responses.create(
                         model="gpt-4.1-mini",
                         input=second_input,
                         tools=self.tools,
                     )
 
-                    return final_response.output_text
+                return final_response.output_text
 
         return response.output_text
 
